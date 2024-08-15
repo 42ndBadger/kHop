@@ -32,25 +32,33 @@ int main(int argc, char **args) {
         std::cout << "Needs 3 arguments: k input_path output_path\n";
         return -1;
     }
-    std::cout << "kHop Graph Generator";
+    std::cout << "kHop Graph Generator\n";
     int k = atoi(args[1]);
     char *input_path = args[2];
     char *output_path = args[3];
 
-    std::cout << "Reading input graph...";
+    std::cout << "Reading input graph...\n";
     NetworKit::METISGraphReader reader;
     NetworKit::Graph input_graph = reader.read(input_path);
 
-    std::cout << "Generating...";
+    std::cout << "Generating...\n";
     auto output_graph = NetworKit::Graph(input_graph.numberOfNodes());
-    input_graph.parallelForNodes([&](NetworKit::node u) {
-        for (NetworKit::node v: kHopNeighbours(input_graph, u, k)) {
-            output_graph.addEdge(u, v);
-        }
-    });
+    if (input_graph.isDirected()) {
+        input_graph.parallelForNodes([&](NetworKit::node u) {
+            for (auto v: kHopNeighbours(input_graph, u, k)) {
+                output_graph.addEdge(u, v, NetworKit::defaultEdgeWeight, true);
+            }
+        });
+    } else {
+        input_graph.parallelForNodes([&](NetworKit::node u) {
+            for (NetworKit::node v: kHopNeighbours(input_graph, u, k)) {
+                if (u < v)
+                    output_graph.addEdge(u, v);
+            }
+        });
+    }
 
-    std::cout << "Writing...";
+    std::cout << "Writing...\n";
     NetworKit::METISGraphWriter writer;
     writer.write(output_graph, output_path);
 }
-
