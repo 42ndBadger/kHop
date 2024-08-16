@@ -1,5 +1,5 @@
 #include <iostream>
-#include <bits/parse_numbers.h>
+#include <limits.h>
 #include <networkit/graph/Graph.hpp>
 #include <networkit/io/METISGraphReader.hpp>
 #include <networkit/io/METISGraphWriter.hpp>
@@ -28,14 +28,17 @@ std::vector<NetworKit::node> kHopNeighbours(NetworKit::Graph g, NetworKit::node 
 }
 
 int main(int argc, char **args) {
-    if (argc != 4) {
-        std::cout << "Needs 3 arguments: k input_path output_path\n";
+    if (argc != 4 && argc != 5) {
+        std::cout << "Needs 3 or 4 arguments: k input_path output_path [log2_max_edges]\n";
         return -1;
     }
     std::cout << "kHop Graph Generator\n";
     int k = atoi(args[1]);
     char *input_path = args[2];
     char *output_path = args[3];
+    NetworKit::edgeid max_edges = argc == 5 ? 1ul << atoi(args[4]) : ULONG_MAX;
+
+    std::cout << "Max Edges: " << max_edges << "\n";
 
     std::cout << "Reading input graph...\n";
     NetworKit::METISGraphReader reader;
@@ -48,6 +51,7 @@ int main(int argc, char **args) {
             for (auto v: kHopNeighbours(input_graph, u, k)) {
                 output_graph.addEdge(u, v, NetworKit::defaultEdgeWeight, true);
             }
+            if(output_graph.numberOfEdges() > max_edges) throw std::length_error("too many edges");
         });
     } else {
         input_graph.parallelForNodes([&](NetworKit::node u) {
@@ -55,6 +59,7 @@ int main(int argc, char **args) {
                 if (u < v)
                     output_graph.addEdge(u, v);
             }
+            if(output_graph.numberOfEdges() > max_edges) throw std::length_error("too many edges");
         });
     }
 
